@@ -14,7 +14,6 @@
 .glide/
 .idea
 .vendor/pkg
-.vendor/src/kchain
 example
 d1
 main
