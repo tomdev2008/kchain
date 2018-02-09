@@ -1,0 +1,11 @@
+[target]
+path = kchain
+
+[deps]
+github.com/ethereum/go-ethereum/log = 
+github.com/tendermint/abci = 
+github.com/tendermint/go-crypto = 
+github.com/tendermint/go-wire = 
+github.com/tendermint/iavl = 
+github.com/tendermint/tmlibs = 
+
