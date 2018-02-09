@@ -6,13 +6,9 @@ import (
 	"github.com/spf13/cobra"
 
 	nm "github.com/tendermint/tendermint/node"
-	//"github.com/tendermint/tmlibs/common"
 
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
-
-	//"github.com/tendermint/tmlibs/log"
-	//"os"
 
 	"kchain/abci"
 	"kchain/app"
@@ -25,10 +21,10 @@ var kcfg = cfg.GetConfig()
 // AddNodeFlags exposes some common configuration options on the command-line
 // These are exposed for convenience of commands embedding a tendermint node
 func AddNodeFlags(cmd *cobra.Command) *cobra.Command {
-	cfg := kcfg()
+	_cfg := kcfg()
 
 	// app falgs
-	cmd.Flags().StringVar(&cfg.App.Addr, "addr", cfg.App.Addr, "kchain port")
+	cmd.Flags().StringVar(&_cfg.App.Addr, "addr", _cfg.App.Addr, "kchain port")
 
 	// bind flags
 	cmd.Flags().StringVar(&config.Moniker, "moniker", config.Moniker, "Node Name")
@@ -45,13 +41,13 @@ func AddNodeFlags(cmd *cobra.Command) *cobra.Command {
 	cmd.Flags().BoolVar(&config.RPC.Unsafe, "rpc.unsafe", config.RPC.Unsafe, "Enabled unsafe rpc methods")
 
 	// p2p flags
-	cmd.Flags().String("p2p.laddr", config.P2P.ListenAddress, "Node listen address. (0.0.0.0:0 means any interface, any port)")
-	cmd.Flags().String("p2p.seeds", config.P2P.Seeds, "Comma delimited host:port seed nodes")
-	cmd.Flags().Bool("p2p.skip_upnp", config.P2P.SkipUPNP, "Skip UPNP configuration")
-	cmd.Flags().Bool("p2p.pex", config.P2P.PexReactor, "Enable/disable Peer-Exchange")
+	cmd.Flags().StringVar(&config.P2P.ListenAddress, "p2p.laddr", config.P2P.ListenAddress, "Node listen address. (0.0.0.0:0 means any interface, any port)")
+	cmd.Flags().StringVar(&config.P2P.Seeds, "p2p.seeds", config.P2P.Seeds, "Comma delimited host:port seed nodes")
+	cmd.Flags().StringVar(&config.P2P.SkipUPNP, "p2p.skip_upnp", config.P2P.SkipUPNP, "Skip UPNP configuration")
+	cmd.Flags().BoolVar(&config.P2P.PexReactor, "p2p.pex", config.P2P.PexReactor, "Enable/disable Peer-Exchange")
 
 	// consensus flags
-	cmd.Flags().Bool("consensus.create_empty_blocks", config.Consensus.CreateEmptyBlocks, "Set this to false to only produce blocks when there are txs or when the AppHash changes")
+	cmd.Flags().BoolVar(&config.Consensus.CreateEmptyBlocks, "consensus.create_empty_blocks", config.Consensus.CreateEmptyBlocks, "Set this to false to only produce blocks when there are txs or when the AppHash changes")
 
 	return cmd
 }
