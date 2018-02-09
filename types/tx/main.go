@@ -1,14 +1,11 @@
 package tx
 
 import (
-	"github.com/json-iterator/go"
-
 	"kchain/types"
 
 	"kchain/types/events"
+	"strings"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type Tx types.Tx
 
@@ -30,7 +27,7 @@ func (tx *Tx) Do() {
 
 	logger.Debug(tx.Event)
 	if e := events.GetEvent(tx.Event); e != nil {
-		if tx.Sync == "true" {
+		if strings.Compare(tx.Sync, "true") == 0 {
 			e.Handler(tx.ToBytes())
 		} else {
 			go e.Handler(tx.ToBytes())

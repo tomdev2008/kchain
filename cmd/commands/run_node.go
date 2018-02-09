@@ -20,16 +20,15 @@ import (
 	"kchain/types/cfg"
 )
 
-
-
+var kcfg = cfg.GetConfig()
 
 // AddNodeFlags exposes some common configuration options on the command-line
 // These are exposed for convenience of commands embedding a tendermint node
 func AddNodeFlags(cmd *cobra.Command) *cobra.Command {
-	var kcfg = cfg.GetConfig()
+	cfg := kcfg()
 
 	// app falgs
-	cmd.Flags().StringVar(&kcfg.App.Addr, "addr", kcfg.App.Addr, "kchain port")
+	cmd.Flags().StringVar(&cfg.App.Addr, "addr", cfg.App.Addr, "kchain port")
 
 	// bind flags
 	cmd.Flags().StringVar(&config.Moniker, "moniker", config.Moniker, "Node Name")
@@ -54,8 +53,6 @@ func AddNodeFlags(cmd *cobra.Command) *cobra.Command {
 	// consensus flags
 	cmd.Flags().Bool("consensus.create_empty_blocks", config.Consensus.CreateEmptyBlocks, "Set this to false to only produce blocks when there are txs or when the AppHash changes")
 
-	fmt.Println(kcfg.App.Addr)
-
 	return cmd
 }
 
@@ -69,13 +66,8 @@ func NewRunNodeCmd() *cobra.Command {
 		Short: "Run the tendermint node",
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			var kcfg = cfg.GetConfig()
-			//var logger = log.NewTMLogger(log.NewSyncWriter(os.Stderr)).With("module", "main")
-
-			//logger.Info(kcfg.App.Addr, "type", "debug")
-
 			// 初始化配置
-			kcfg.Config = config
+			kcfg().Config = config
 
 			// 启动abci服务和tendermint节点
 			n, err := nm.NewNode(
@@ -96,8 +88,6 @@ func NewRunNodeCmd() *cobra.Command {
 			} else {
 				logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
 			}
-
-			logger.Info(kcfg.App.Addr)
 
 			// 启动应用
 			app.Run()

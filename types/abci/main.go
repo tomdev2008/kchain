@@ -28,8 +28,10 @@ func Init(url string) {
 	})
 }
 
-func GetAbciClient() *c.HTTP {
-	return instance.client
+func GetAbciClient() func() *c.HTTP {
+	return func() *c.HTTP {
+		return instance.client
+	}
 }
 
 /*

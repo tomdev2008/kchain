@@ -1,4 +1,4 @@
-package tx
+package transaction
 
 import (
 	klog "kchain/utils/log"
@@ -8,6 +8,6 @@ import (
 
 var (
 	json = jsoniter.ConfigCompatibleWithStandardLibrary
-	logger = klog.GetLogWithKeyVals("module", "app.tx")
+	logger = klog.GetLogWithKeyVals("module", "abci.tx")
 	cfg = kcfg.GetConfig()
 )

@@ -4,11 +4,9 @@ import (
 	"sort"
 
 	"golang.org/x/crypto/sha3"
-	"github.com/json-iterator/go"
 	"github.com/mitchellh/mapstructure"
 )
 
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 /*
 type Transaction struct {

@@ -1,4 +1,4 @@
-package abci
+package app
 
 import (
 	kcfg "kchain/types/cfg"
@@ -6,6 +6,6 @@ import (
 )
 
 var (
-	logger = klog.GetLogWithKeyVals("module", "abci")
 	cfg = kcfg.GetConfig()
+	logger = klog.GetLogWithKeyVals("module", "app")
 )

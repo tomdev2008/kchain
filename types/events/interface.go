@@ -2,9 +2,6 @@ package events
 
 import (
 	"sync"
-	"fmt"
-	"github.com/tendermint/tmlibs/log"
-	"os"
 )
 
 type Event struct {
@@ -19,16 +16,10 @@ var (
 )
 
 func Init() {
-	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "main")
-	logger.Info("init")
 	once.Do(func() {
 		instance = make(map[string]*Event)
+		init_events()
 	})
-	init_events()
-
-	for k, _ := range instance {
-		fmt.Println(k)
-	}
 }
 
 func GetEvent(name string) *Event {
@@ -36,8 +27,7 @@ func GetEvent(name string) *Event {
 }
 
 func e(name string, desc string, handler func([]byte)) {
-	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "main")
-	logger.Info("registry", "value", name)
+	logger.Info("register event", "event", name)
 	instance[name] = &Event{
 		Name:name,
 		Desc:desc,

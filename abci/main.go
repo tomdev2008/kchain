@@ -34,7 +34,7 @@ type PersistentApplication struct {
 }
 
 func Run() *PersistentApplication {
-	db, err := dbm.NewGoLevelDB("kchain", cfg.Config.DBDir())
+	db, err := dbm.NewGoLevelDB("kchain", cfg().Config.DBDir())
 	if err != nil {
 		panic(err.Error())
 	}

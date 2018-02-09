@@ -30,10 +30,12 @@ func initServices() *services {
 	}
 }
 
-func GetConfig() *services {
-	once.Do(func() {
-		instance = initServices()
-	})
-	return instance
+func GetConfig() func() *services {
+	return func() *services {
+		once.Do(func() {
+			instance = initServices()
+		})
+		return instance
+	}
 }
 
