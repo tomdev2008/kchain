@@ -7,9 +7,6 @@ const (
 	DbGet = "DbGet"
 
 	ValidatorSet = "ValidatorSet"
-	ValidatorDel = "ValidatorDel"
 
 	AccountSet = "AccountSet"
-	AccountGet = "AccountGet"
-	AccountDel = "AccountDel"
 )

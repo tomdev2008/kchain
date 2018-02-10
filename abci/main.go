@@ -15,10 +15,12 @@ import (
 	"github.com/tendermint/tmlibs/log"
 
 	"kchain/types/code"
+	"kchain/types/transaction"
 )
 
 const (
 	ValidatorSetChangePrefix string = "val:"
+	AccountSetChangePrefix string = "act:"
 )
 
 //-----------------------------------------
@@ -26,28 +28,18 @@ const (
 var _ types.Application = (*PersistentApplication)(nil)
 
 type PersistentApplication struct {
-	app               *KchainApplication
+	types.BaseApplication
+	state             *iavl.VersionedTree
 	ValUpdates        []*types.Validator
 	GenesisValidators []*types.Validator
 	logger            log.Logger
 }
 
 func Run() *PersistentApplication {
-	db, err := dbm.NewGoLevelDB("kchain", cfg().Config.DBDir())
-	if err != nil {
-		panic(err.Error())
-	}
-
-	stateTree := iavl.NewVersionedTree(0, db)
-	stateTree.Load()
-
-	return &PersistentApplication{
-		app:    &KchainApplication{state: stateTree},
-		logger: logger(),
-	}
+	return NewPersistentApplication("kchain", cfg().Config.DBDir(), logger())
 }
 
-func NewPersistentApplication(name, dbDir string) *PersistentApplication {
+func NewPersistentApplication(name, dbDir string, log1 log.Logger) *PersistentApplication {
 	db, err := dbm.NewGoLevelDB(name, dbDir)
 	if err != nil {
 		panic(err.Error())
@@ -57,8 +49,8 @@ func NewPersistentApplication(name, dbDir string) *PersistentApplication {
 	stateTree.Load()
 
 	return &PersistentApplication{
-		app:    &KchainApplication{state: stateTree},
-		logger: log.NewNopLogger(),
+		state: stateTree,
+		logger: log1,
 	}
 }
 
@@ -66,19 +58,68 @@ func (app *PersistentApplication) SetLogger(l log.Logger) {
 	app.logger = l
 }
 
-func (app *PersistentApplication) Info(req types.RequestInfo) types.ResponseInfo {
-	res := app.app.Info(req)
-	res.LastBlockHeight = int64(app.app.state.LatestVersion())
-	res.LastBlockAppHash = app.app.state.Hash()
-	return res
+func (app *PersistentApplication) Info(req types.RequestInfo) (res types.ResponseInfo) {
+	res.Data = fmt.Sprintf("{\"size\":%v}", app.state.Size())
+	res.LastBlockHeight = int64(app.state.LatestVersion())
+	res.LastBlockAppHash = app.state.Hash()
+	return
 }
 
 func (app *PersistentApplication) SetOption(req types.RequestSetOption) types.ResponseSetOption {
-	return app.app.SetOption(req)
+	return types.ResponseSetOption{Code: types.CodeTypeOK}
 }
 
 // tx is either "val:pubkey/power" or "key=value" or just arbitrary bytes
-func (app *PersistentApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
+func (app *PersistentApplication) DeliverTx(txBytes []byte) types.ResponseDeliverTx {
+	tx := &transaction.Transaction{}
+	tx.FromBytes(txBytes)
+
+	switch tx.Type {
+	case transaction.DbSet:
+		db, _ := tx.ToDb()
+		app.state.Set([]byte(db.Key), []byte(db.Value))
+
+	case transaction.AccountSet:
+		account, _ := tx.ToAccount()
+		app.state.Set([]byte(AccountSetChangePrefix + account.PubKey), []byte(strconv.Itoa(account.Power)))
+
+	case transaction.ValidatorSet:
+		val, _ := tx.ToValidator()
+		key := []byte(ValidatorSetChangePrefix + string(val.PubKey))
+
+		if val.Power == 0 {
+			// remove validator
+			if !app.state.Has(key) {
+				return types.ResponseDeliverTx{
+					Code: code.CodeTypeUnauthorized.Code,
+					Log:  fmt.Sprintf("Cannot remove non-existent validator %X", key)}
+			}
+			app.state.Remove(key)
+		} else {
+			// add or update validator
+			value := bytes.NewBuffer(make([]byte, 0))
+			if err := types.WriteMessage(&types.Validator{val.PubKey, val.Power}, value); err != nil {
+				return types.ResponseDeliverTx{
+					Code: code.CodeTypeEncodingError.Code,
+					Log:  fmt.Sprintf("Error encoding validator: %v", err)}
+			}
+			app.state.Set(key, value.Bytes())
+		}
+
+		// we only update the changes array if we successfully updated the tree
+		app.ValUpdates = append(app.ValUpdates, &types.Validator{val.PubKey, val.Power})
+
+
+
+	default:
+		return types.ResponseDeliverTx{
+			Code:code.CodeTypeEncodingError.Code,
+			Log:"unknown transaction type",
+		}
+	}
+
+	return types.ResponseDeliverTx{Code: code.Ok.Code}
+
 	// if it starts with "val:", update the validator set
 	// format is "val:pubkey/power"
 	if isValidatorTx(tx) {
@@ -88,32 +129,101 @@ func (app *PersistentApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	}
 
 	// otherwise, update the key-value store
-	return app.app.DeliverTx(tx)
+	return types.ResponseDeliverTx{Code: code.Ok.Code}
 }
 
-func (app *PersistentApplication) CheckTx(tx []byte) types.ResponseCheckTx {
-	return app.app.CheckTx(tx)
+func (app *PersistentApplication) CheckTx(txBytes []byte) types.ResponseCheckTx {
+	tx := &transaction.Transaction{}
+	if err := tx.FromBytes(txBytes); err != nil {
+		return types.ResponseDeliverTx{
+			Code:code.CodeTypeEncodingError.Code,
+			Log:err.Error(),
+		}
+	}
+
+	switch tx.Type {
+	case transaction.DbSet:
+		if _, err := tx.ToDb(); err != nil {
+			return types.ResponseDeliverTx{
+				Code:code.CodeTypeEncodingError.Code,
+				Log:err.Error(),
+			}
+		}
+	case transaction.AccountSet:
+		if _, err := tx.ToAccount(); err != nil {
+			return types.ResponseDeliverTx{
+				Code:code.CodeTypeEncodingError.Code,
+				Log:err.Error(),
+			}
+		}
+	case transaction.ValidatorSet:
+		if val, err := tx.ToValidator(); err != nil {
+			return types.ResponseDeliverTx{
+				Code:code.CodeTypeEncodingError.Code,
+				Log:err.Error(),
+			}
+		} else {
+			if _, err = crypto.PubKeyFromBytes([]byte(val.PubKey)); err != nil {
+				return types.ResponseDeliverTx{
+					Code: code.CodeTypeEncodingError.Code,
+					Log:  fmt.Sprintf("Pubkey (%X) is invalid go-crypto encoded", val.PubKey)}
+			}
+		}
+	default:
+		return types.ResponseDeliverTx{
+			Code:code.CodeTypeEncodingError.Code,
+			Log:"unknown transaction type",
+		}
+	}
+	return types.ResponseCheckTx{Code: code.Ok.Code}
 }
 
 // Commit will panic if InitChain was not called
-func (app *PersistentApplication) Commit() types.ResponseCommit {
-
+func (app *PersistentApplication) Commit() (res types.ResponseCommit) {
 	// Save a new version for next height
-	height := app.app.state.LatestVersion() + 1
-	var appHash []byte
-	var err error
-
-	appHash, err = app.app.state.SaveVersion(height)
-	if err != nil {
+	height := app.state.LatestVersion() + 1
+	if appHash, err := app.state.SaveVersion(height); err != nil {
 		panic(err)
+	} else {
+		app.logger.Info("Commit block", "height", height, "root", appHash)
+		return types.ResponseCommit{Code: code.Ok.Code, Data: appHash}
 	}
-
-	app.logger.Info("Commit block", "height", height, "root", appHash)
-	return types.ResponseCommit{Code: code.Ok.Code, Data: appHash}
 }
 
-func (app *PersistentApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {
-	return app.app.Query(reqQuery)
+func (app *PersistentApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
+	var (
+		data = reqQuery.Data
+		path = reqQuery.Path
+	)
+
+	switch path {
+	case transaction.DbGet:
+
+		db := &transaction.Db{}
+		if err := json.Unmarshal(data, db); err != nil {
+			resQuery.Code = code.CodeTypeBadNonce.Code
+			resQuery.Log = err.Error()
+			return
+		}
+		logger.Error(db.Key, "search", "abci")
+		index, value := app.state.Get([]byte(db.Key))
+
+		logger.Error(string(value), "search", "abci")
+
+		resQuery.Index = int64(index)
+		resQuery.Key = []byte(db.Key)
+		resQuery.Value = value
+
+		if value != nil {
+			resQuery.Log = "exists"
+		} else {
+			resQuery.Log = "does not exist"
+		}
+	default:
+		resQuery.Code = code.CodeTypeBadNonce.Code
+		resQuery.Log = "wrong path"
+	}
+	return
 }
 
 // Save the validators in the merkle tree
@@ -145,9 +255,8 @@ func (app *PersistentApplication) EndBlock(req types.RequestEndBlock) types.Resp
 
 //---------------------------------------------
 // update validators
-
 func (app *PersistentApplication) Validators() (validators []*types.Validator) {
-	app.app.state.Iterate(func(key, value []byte) bool {
+	app.state.Iterate(func(key, value []byte) bool {
 		if isValidatorTx(key) {
 			validator := new(types.Validator)
 			err := types.ReadMessage(bytes.NewBuffer(value), validator)
@@ -213,12 +322,12 @@ func (app *PersistentApplication) updateValidator(v *types.Validator) types.Resp
 	key := []byte("val:" + string(v.PubKey))
 	if v.Power == 0 {
 		// remove validator
-		if !app.app.state.Has(key) {
+		if !app.state.Has(key) {
 			return types.ResponseDeliverTx{
 				Code: code.CodeTypeUnauthorized.Code,
 				Log:  fmt.Sprintf("Cannot remove non-existent validator %X", key)}
 		}
-		app.app.state.Remove(key)
+		app.state.Remove(key)
 	} else {
 		// add or update validator
 		value := bytes.NewBuffer(make([]byte, 0))
@@ -227,7 +336,7 @@ func (app *PersistentApplication) updateValidator(v *types.Validator) types.Resp
 				Code: code.CodeTypeEncodingError.Code,
 				Log:  fmt.Sprintf("Error encoding validator: %v", err)}
 		}
-		app.app.state.Set(key, value.Bytes())
+		app.state.Set(key, value.Bytes())
 	}
 
 	// we only update the changes array if we successfully updated the tree

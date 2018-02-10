@@ -7,7 +7,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-
 /*
 type Transaction struct {
 	Type      TransactionType  `json:"type"`
@@ -19,9 +18,8 @@ type Transaction struct {
  */
 
 type Transaction struct {
-	Type      string        `json:"type"`
-	Signature string        `json:"signature"`
-	Data      interface{}   `json:"data"`
+	Type string        `json:"type"`
+	Data interface{}   `json:"data"`
 }
 
 func (t *Transaction) FromBytes(bs []byte) error {
@@ -32,11 +30,28 @@ func (t *Transaction) ToBytes() ([]byte, error) {
 	return json.Marshal(t)
 }
 
-func (t *Transaction) ToDb(db *Db) error {
+func (t *Transaction) ToDb() (*Db, error) {
+	db := &Db{}
 	if err := mapstructure.Decode(t.Data, db); err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return db, nil
+}
+
+func (t *Transaction) ToAccount() (*Account, error) {
+	account := &Account{}
+	if err := mapstructure.Decode(t.Data, account); err != nil {
+		return nil, err
+	}
+	return account, nil
+}
+
+func (t *Transaction) ToValidator() (*Validator, error) {
+	val := &Validator{}
+	if err := mapstructure.Decode(t.Data, val); err != nil {
+		return nil, err
+	}
+	return val, nil
 }
 
 //func (t *Transaction) Hash() []byte {
