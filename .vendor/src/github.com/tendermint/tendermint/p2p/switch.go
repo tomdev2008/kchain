@@ -257,7 +257,6 @@ func (sw *Switch) addPeer(peer *peer) error {
 	// Check for duplicate peer
 	if sw.peers.Has(peer.Key()) {
 		return ErrSwitchDuplicatePeer
-
 	}
 
 	// Start peer

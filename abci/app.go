@@ -10,10 +10,7 @@ import (
 	"kchain/types/transaction"
 
 	"kchain/types/code"
-	"github.com/json-iterator/go"
 )
-
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 var _ types.Application = (*KchainApplication)(nil)
 
@@ -42,8 +39,6 @@ func (app *KchainApplication) DeliverTx(txBytes []byte) types.ResponseDeliverTx 
 		}
 	}
 
-	logger.Error(string(tx.Type))
-
 	switch tx.Type {
 	case transaction.DbSet:
 		db := &transaction.Db{}
@@ -69,7 +64,14 @@ func (app *KchainApplication) DeliverTx(txBytes []byte) types.ResponseDeliverTx 
 	return types.ResponseDeliverTx{Code: code.Ok.Code}
 }
 
-func (app *KchainApplication) CheckTx(tx []byte) types.ResponseCheckTx {
+func (app *KchainApplication) CheckTx(txBytes []byte) types.ResponseCheckTx {
+	tx := &transaction.Transaction{}
+	if err := tx.FromBytes(tx); err != nil {
+		return types.ResponseDeliverTx{
+			Code:code.CodeTypeEncodingError.Code,
+			Log:err.Error(),
+		}
+	}
 	return types.ResponseCheckTx{Code: code.Ok.Code}
 }
 
@@ -81,7 +83,6 @@ func (app *KchainApplication) Commit() (res types.ResponseCommit) {
 		res.Code = code.CodeTypeBadNonce.Code
 		res.Log = "size is small"
 		return
-
 	}
 
 	app.state.Hash()

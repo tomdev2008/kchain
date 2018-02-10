@@ -9,6 +9,7 @@ import (
 
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
+	crypto "github.com/tendermint/go-crypto"
 
 	"kchain/abci"
 	"kchain/app"
@@ -33,21 +34,21 @@ func AddNodeFlags(cmd *cobra.Command) *cobra.Command {
 	cmd.Flags().BoolVar(&config.FastSync, "fast_sync", config.FastSync, "Fast blockchain syncing")
 
 	// abci flags
-	cmd.Flags().StringVar(&config.ProxyApp, "proxy_app", config.ProxyApp, "Proxy app address, or 'nilapp' or 'dummy' for local testing.")
-	cmd.Flags().StringVar(&config.ABCI, "abci", config.ABCI, "Specify abci transport (socket | grpc)")
+	//cmd.Flags().StringVar(&config.ProxyApp, "proxy_app", config.ProxyApp, "Proxy app address, or 'nilapp' or 'dummy' for local testing.")
+	//cmd.Flags().StringVar(&config.ABCI, "abci", config.ABCI, "Specify abci transport (socket | grpc)")
 
 	// rpc flags
-	cmd.Flags().StringVar(&config.RPC.GRPCListenAddress, "rpc.grpc_laddr", config.RPC.GRPCListenAddress, "GRPC listen address (BroadcastTx only). Port required")
-	cmd.Flags().BoolVar(&config.RPC.Unsafe, "rpc.unsafe", config.RPC.Unsafe, "Enabled unsafe rpc methods")
+	//cmd.Flags().StringVar(&config.RPC.GRPCListenAddress, "rpc.grpc_laddr", config.RPC.GRPCListenAddress, "GRPC listen address (BroadcastTx only). Port required")
+	//cmd.Flags().BoolVar(&config.RPC.Unsafe, "rpc.unsafe", config.RPC.Unsafe, "Enabled unsafe rpc methods")
 
 	// p2p flags
 	cmd.Flags().StringVar(&config.P2P.ListenAddress, "p2p.laddr", config.P2P.ListenAddress, "Node listen address. (0.0.0.0:0 means any interface, any port)")
 	cmd.Flags().StringVar(&config.P2P.Seeds, "p2p.seeds", config.P2P.Seeds, "Comma delimited host:port seed nodes")
-	cmd.Flags().StringVar(&config.P2P.SkipUPNP, "p2p.skip_upnp", config.P2P.SkipUPNP, "Skip UPNP configuration")
+	cmd.Flags().BoolVar(&config.P2P.SkipUPNP, "p2p.skip_upnp", config.P2P.SkipUPNP, "Skip UPNP configuration")
 	cmd.Flags().BoolVar(&config.P2P.PexReactor, "p2p.pex", config.P2P.PexReactor, "Enable/disable Peer-Exchange")
 
 	// consensus flags
-	cmd.Flags().BoolVar(&config.Consensus.CreateEmptyBlocks, "consensus.create_empty_blocks", config.Consensus.CreateEmptyBlocks, "Set this to false to only produce blocks when there are txs or when the AppHash changes")
+	//cmd.Flags().BoolVar(&config.Consensus.CreateEmptyBlocks, "consensus.create_empty_blocks", config.Consensus.CreateEmptyBlocks, "Set this to false to only produce blocks when there are txs or when the AppHash changes")
 
 	return cmd
 }
@@ -74,10 +75,15 @@ func NewRunNodeCmd() *cobra.Command {
 				nm.DefaultDBProvider,
 				logger,
 			)
-
 			if err != nil {
 				return fmt.Errorf("Failed to create node: %v", err)
 			}
+
+			// 新加入节点的过滤逻辑
+			n.Switch().SetPubKeyFilter(func(pk crypto.PubKeyEd25519) error {
+				pk.KeyString()
+				return nil
+			})
 
 			if err := n.Start(); err != nil {
 				return fmt.Errorf("Failed to start node: %v", err)

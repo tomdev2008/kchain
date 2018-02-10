@@ -26,11 +26,10 @@ const (
 var _ types.Application = (*PersistentApplication)(nil)
 
 type PersistentApplication struct {
-	app        *KchainApplication
-
-	ValUpdates []*types.Validator
-
-	logger     log.Logger
+	app               *KchainApplication
+	ValUpdates        []*types.Validator
+	GenesisValidators []*types.Validator
+	logger            log.Logger
 }
 
 func Run() *PersistentApplication {
@@ -44,7 +43,7 @@ func Run() *PersistentApplication {
 
 	return &PersistentApplication{
 		app:    &KchainApplication{state: stateTree},
-		logger: logger,
+		logger: logger(),
 	}
 }
 
@@ -123,6 +122,9 @@ func (app *PersistentApplication) InitChain(req types.RequestInitChain) types.Re
 		r := app.updateValidator(v)
 		if r.IsErr() {
 			app.logger.Error("Error updating validators", "r", r)
+		} else {
+			// 把创世验证者添加进去
+			app.GenesisValidators = append(app.GenesisValidators, v)
 		}
 	}
 	return types.ResponseInitChain{}
@@ -132,6 +134,7 @@ func (app *PersistentApplication) InitChain(req types.RequestInitChain) types.Re
 func (app *PersistentApplication) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
 	// reset valset changes
 	app.ValUpdates = make([]*types.Validator, 0)
+	app.GenesisValidators = make([]*types.Validator, 0)
 	return types.ResponseBeginBlock{}
 }
 

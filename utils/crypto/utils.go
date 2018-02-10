@@ -23,12 +23,14 @@ func RandVals(cnt int) []*types.Validator {
 	for i := 0; i < cnt; i++ {
 		res[i] = RandVal(i)
 	}
+
+	crypto.GenPrivKeyEd25519FromSecret()
+
+	pk := &crypto.PrivKeyEd25519{"sss"}
+	pk.AssertIsPrivKeyInner()
+
+	crypto.PubKeyEd25519{"ddd"}
 	return res
 }
 
-// InitDummy initializes the dummy app with some data,
-// which allows tests to pass and is fine as long as you
-// don't make any tx that modify the validator state
-func InitDummy(app *PersistentDummyApplication) {
-	app.InitChain(types.RequestInitChain{RandVals(1)})
-}
+

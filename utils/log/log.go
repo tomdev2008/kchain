@@ -28,10 +28,8 @@ func Init() *Klog {
 	return &Klog{log:instance}
 }
 
-func GetLog() tlog.Logger {
-	return Init().log
-}
-
-func GetLogWithKeyVals(keyvals ...interface{}) tlog.Logger {
-	return Init().log.With(keyvals...)
+func GetLogWithKeyVals(keyvals ...interface{}) func() tlog.Logger {
+	return func() tlog.Logger {
+		return Init().log.With(keyvals...)
+	}
 }

@@ -19,8 +19,9 @@ type Transaction struct {
  */
 
 type Transaction struct {
-	Type string        `json:"type"`
-	Data interface{}   `json:"data"`
+	Type      string        `json:"type"`
+	Signature string        `json:"signature"`
+	Data      interface{}   `json:"data"`
 }
 
 func (t *Transaction) FromBytes(bs []byte) error {
@@ -31,7 +32,7 @@ func (t *Transaction) ToBytes() ([]byte, error) {
 	return json.Marshal(t)
 }
 
-func (t *Transaction) ToDb(db *Db) (err error) {
+func (t *Transaction) ToDb(db *Db) error {
 	if err := mapstructure.Decode(t.Data, db); err != nil {
 		return err
 	}

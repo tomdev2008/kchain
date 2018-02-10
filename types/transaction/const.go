@@ -3,10 +3,13 @@ package transaction
 type TransactionType string
 
 const (
-	MetaDataAdd TransactionType = "addMetadata"
-	MetaDataGet TransactionType = "getMetadata"
-	AccountSet TransactionType = "setAccount"
-	AccountGet TransactionType = "getAccount"
-	DbSet string = "DbSet"
-	DbGet string = "DbGet"
+	DbSet = "DbSet"
+	DbGet = "DbGet"
+
+	ValidatorSet = "ValidatorSet"
+	ValidatorDel = "ValidatorDel"
+
+	AccountSet = "AccountSet"
+	AccountGet = "AccountGet"
+	AccountDel = "AccountDel"
 )
