@@ -84,7 +84,8 @@ func NewRunNodeCmd() *cobra.Command {
 				pk.KeyString()
 				return nil
 			})
-			
+
+
 			if err := n.Start(); err != nil {
 				return fmt.Errorf("Failed to start node: %v", err)
 			} else {

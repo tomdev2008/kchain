@@ -5,6 +5,9 @@ import (
 
 	"golang.org/x/crypto/sha3"
 	"github.com/mitchellh/mapstructure"
+	"strings"
+	crypto "github.com/tendermint/go-crypto"
+	"github.com/pkg/errors"
 )
 
 /*
@@ -18,12 +21,17 @@ type Transaction struct {
  */
 
 type Transaction struct {
-	Type string        `json:"type"`
-	Data interface{}   `json:"data"`
+	SignPubKey string        `json:"signature,omitempty"`
+	Signature  string        `json:"signature,omitempty"`
+	Type       string        `json:"type,omitempty"`
+	Data       interface{}   `json:"data"`
 }
 
 func (t *Transaction) FromBytes(bs []byte) error {
-	return json.Unmarshal(bs, t)
+	if err := json.Unmarshal(bs, t); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (t *Transaction) ToBytes() ([]byte, error) {
@@ -35,6 +43,14 @@ func (t *Transaction) ToDb() (*Db, error) {
 	if err := mapstructure.Decode(t.Data, db); err != nil {
 		return nil, err
 	}
+
+	if strings.Compare(t.Signature, "") != 0 {
+		pk := crypto.PubKeyEd25519{t.SignPubKey}
+		if !pk.VerifyBytes(db.ToSortString(), crypto.SignatureEd25519FromBytes(t.SignPubKey)) {
+			return nil, errors.New("验证签名失败")
+		}
+	}
+
 	return db, nil
 }
 
@@ -43,6 +59,16 @@ func (t *Transaction) ToAccount() (*Account, error) {
 	if err := mapstructure.Decode(t.Data, account); err != nil {
 		return nil, err
 	}
+
+	if strings.Compare(t.Signature, "") == 0 {
+		return nil, errors.New("验证签名为空")
+	}
+
+	pk := crypto.PubKeyEd25519{t.SignPubKey}
+	if !pk.VerifyBytes(account.ToSortString(), crypto.SignatureEd25519FromBytes(t.SignPubKey)) {
+		return nil, errors.New("验证签名失败")
+	}
+
 	return account, nil
 }
 
@@ -51,6 +77,16 @@ func (t *Transaction) ToValidator() (*Validator, error) {
 	if err := mapstructure.Decode(t.Data, val); err != nil {
 		return nil, err
 	}
+
+	if strings.Compare(t.Signature, "") == 0 {
+		return nil, errors.New("验证签名为空")
+	}
+
+	pk := crypto.PubKeyEd25519{t.SignPubKey}
+	if !pk.VerifyBytes(val.ToSortString(), crypto.SignatureEd25519FromBytes(t.SignPubKey)) {
+		return nil, errors.New("验证签名失败")
+	}
+
 	return val, nil
 }
 

@@ -31,7 +31,7 @@ type PersistentApplication struct {
 	types.BaseApplication
 	state             *iavl.VersionedTree
 	ValUpdates        []*types.Validator
-	GenesisValidators []*types.Validator
+	GenesisValidators map[string]int64
 	logger            log.Logger
 }
 
@@ -88,7 +88,6 @@ func (app *PersistentApplication) DeliverTx(txBytes []byte) types.ResponseDelive
 		key := []byte(ValidatorSetChangePrefix + string(val.PubKey))
 
 		if val.Power == 0 {
-			// remove validator
 			if !app.state.Has(key) {
 				return types.ResponseDeliverTx{
 					Code: code.CodeTypeUnauthorized.Code,
@@ -119,17 +118,6 @@ func (app *PersistentApplication) DeliverTx(txBytes []byte) types.ResponseDelive
 	}
 
 	return types.ResponseDeliverTx{Code: code.Ok.Code}
-
-	// if it starts with "val:", update the validator set
-	// format is "val:pubkey/power"
-	if isValidatorTx(tx) {
-		// update validators in the merkle tree
-		// and in app.ValUpdates
-		return app.execValidatorTx(tx)
-	}
-
-	// otherwise, update the key-value store
-	return types.ResponseDeliverTx{Code: code.Ok.Code}
 }
 
 func (app *PersistentApplication) CheckTx(txBytes []byte) types.ResponseCheckTx {
@@ -141,8 +129,18 @@ func (app *PersistentApplication) CheckTx(txBytes []byte) types.ResponseCheckTx 
 		}
 	}
 
+	if strings.Compare(tx.Signature, "") != 0 {
+		if index, _ := app.state.Get([]byte(AccountSetChangePrefix + tx.SignPubKey)); index == 0 {
+			return types.ResponseDeliverTx{
+				Code:code.CodeTypeEncodingError.Code,
+				Log:"节点账户不存在",
+			}
+		}
+	}
+
 	switch tx.Type {
 	case transaction.DbSet:
+
 		if _, err := tx.ToDb(); err != nil {
 			return types.ResponseDeliverTx{
 				Code:code.CodeTypeEncodingError.Code,
@@ -150,23 +148,32 @@ func (app *PersistentApplication) CheckTx(txBytes []byte) types.ResponseCheckTx 
 			}
 		}
 	case transaction.AccountSet:
+		if app.GenesisValidators[tx.SignPubKey] == 0 {
+			return types.ResponseDeliverTx{
+				Code:code.CodeTypeEncodingError.Code,
+				Log:"验证节点错误",
+			}
+		}
+
 		if _, err := tx.ToAccount(); err != nil {
 			return types.ResponseDeliverTx{
 				Code:code.CodeTypeEncodingError.Code,
 				Log:err.Error(),
 			}
 		}
+
 	case transaction.ValidatorSet:
-		if val, err := tx.ToValidator(); err != nil {
+		if app.GenesisValidators[tx.SignPubKey] == 0 {
+			return types.ResponseDeliverTx{
+				Code:code.CodeTypeEncodingError.Code,
+				Log:"验证节点错误",
+			}
+		}
+
+		if _, err := tx.ToValidator(); err != nil {
 			return types.ResponseDeliverTx{
 				Code:code.CodeTypeEncodingError.Code,
 				Log:err.Error(),
-			}
-		} else {
-			if _, err = crypto.PubKeyFromBytes([]byte(val.PubKey)); err != nil {
-				return types.ResponseDeliverTx{
-					Code: code.CodeTypeEncodingError.Code,
-					Log:  fmt.Sprintf("Pubkey (%X) is invalid go-crypto encoded", val.PubKey)}
 			}
 		}
 	default:
@@ -234,7 +241,7 @@ func (app *PersistentApplication) InitChain(req types.RequestInitChain) types.Re
 			app.logger.Error("Error updating validators", "r", r)
 		} else {
 			// 把创世验证者添加进去
-			app.GenesisValidators = append(app.GenesisValidators, v)
+			app.GenesisValidators[string(v.PubKey)] = v.Power
 		}
 	}
 	return types.ResponseInitChain{}
@@ -244,7 +251,7 @@ func (app *PersistentApplication) InitChain(req types.RequestInitChain) types.Re
 func (app *PersistentApplication) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
 	// reset valset changes
 	app.ValUpdates = make([]*types.Validator, 0)
-	app.GenesisValidators = make([]*types.Validator, 0)
+	app.GenesisValidators = make(map[string]int64)
 	return types.ResponseBeginBlock{}
 }
 
