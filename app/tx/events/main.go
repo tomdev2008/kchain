@@ -18,7 +18,7 @@ func init_events() {
 	e("Ping", "健康检查",
 		func(data []byte) {
 			tx := &Tx{}
-			if err := json.Unmarshal(data, tx); err != nil {
+			if err := json.Unmarshal(data, tx, ); err != nil {
 				store.SetErr(tx.ID, err)
 				return
 			}
@@ -55,7 +55,15 @@ func init_events() {
 				return
 			}
 
-			if d, err := json.MarshalToString(abci_tx.Transaction{Type:tx.Event, Data:tx.Params}); err != nil {
+			tx.Params
+
+			lgvd := kt.LoadOrGenPrivValidatorFS(cfg().Config.PrivValidatorFile())
+			lgvd.Sign(&abci_tx.Db{
+				Key:nil,
+				Value:nil,
+			}.ToSortBytes())
+
+			if d, err := json.MarshalToString(abci_tx.Transaction{Type:tx.Event, Data:tx.Params, SignPubKey:cfg().Node.PrivValidator().GetPubKey().KeyString(), Signature:nil}); err != nil {
 				store.SetErr(tx.ID, err)
 			} else {
 				if res, err := abci.BroadcastTxCommit(types.Tx(d)); err != nil {

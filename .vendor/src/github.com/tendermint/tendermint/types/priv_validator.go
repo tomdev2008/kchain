@@ -17,9 +17,9 @@ import (
 
 // TODO: type ?
 const (
-	stepNone      = 0 // Used to distinguish the initial state
-	stepPropose   = 1
-	stepPrevote   = 2
+	stepNone = 0 // Used to distinguish the initial state
+	stepPropose = 1
+	stepPrevote = 2
 	stepPrecommit = 3
 )
 
@@ -58,14 +58,14 @@ type PrivValidatorFS struct {
 	LastSignature crypto.Signature `json:"last_signature,omitempty"` // so we dont lose signatures
 	LastSignBytes data.Bytes       `json:"last_signbytes,omitempty"` // so we dont lose signatures
 
-	// PrivKey should be empty if a Signer other than the default is being used.
-	PrivKey crypto.PrivKey `json:"priv_key"`
+									 // PrivKey should be empty if a Signer other than the default is being used.
+	PrivKey       crypto.PrivKey `json:"priv_key"`
 	Signer  `json:"-"`
 
-	// For persistence.
-	// Overloaded for testing.
-	filePath string
-	mtx      sync.Mutex
+									 // For persistence.
+									 // Overloaded for testing.
+	filePath      string
+	mtx           sync.Mutex
 }
 
 // Signer is an interface that defines how to sign messages.
@@ -254,7 +254,7 @@ func (privVal *PrivValidatorFS) checkHRS(height int64, round int, step int8) (bo
 // greater than the latest state. If the HRS are equal and the only thing changed is the timestamp,
 // it returns the privValidator.LastSignature. Else it returns an error.
 func (privVal *PrivValidatorFS) signBytesHRS(height int64, round int, step int8,
-	signBytes []byte, checkFn checkOnlyDifferByTimestamp) (crypto.Signature, error) {
+signBytes []byte, checkFn checkOnlyDifferByTimestamp) (crypto.Signature, error) {
 	sig := crypto.Signature{}
 
 	sameHRS, err := privVal.checkHRS(height, round, step)
@@ -284,7 +284,7 @@ func (privVal *PrivValidatorFS) signBytesHRS(height int64, round int, step int8,
 
 // Persist height/round/step and signature
 func (privVal *PrivValidatorFS) saveSigned(height int64, round int, step int8,
-	signBytes []byte, sig crypto.Signature) {
+signBytes []byte, sig crypto.Signature) {
 
 	privVal.LastHeight = height
 	privVal.LastRound = round

@@ -2,10 +2,10 @@ package app
 
 import (
 	kcfg "kchain/types/cfg"
-	klog "kchain/utils/log"
+	tlog "github.com/tendermint/tmlibs/log"
 )
 
 var (
 	cfg = kcfg.GetConfig()
-	logger = klog.GetLogWithKeyVals("module", "app")
+	logger tlog.Logger = nil
 )

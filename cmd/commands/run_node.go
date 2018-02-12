@@ -11,10 +11,10 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	crypto "github.com/tendermint/go-crypto"
 
+	"kchain/types/cfg"
+
 	"kchain/abci"
 	"kchain/app"
-
-	"kchain/types/cfg"
 )
 
 var kcfg = cfg.GetConfig()
@@ -85,12 +85,15 @@ func NewRunNodeCmd() *cobra.Command {
 				return nil
 			})
 
-
 			if err := n.Start(); err != nil {
 				return fmt.Errorf("Failed to start node: %v", err)
 			} else {
 				logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
 			}
+
+			// 得到正在运行的tendermint
+			kcfg().Node = n
+
 
 			// 启动应用
 			app.Run()

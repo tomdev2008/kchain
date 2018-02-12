@@ -2,7 +2,14 @@ package types
 
 import (
 	"github.com/shopspring/decimal"
+	ttypes "github.com/tendermint/tendermint/types"
 )
+
+func LoadOrGenPrivValidatorFS(filePath string) *ttypes.PrivValidatorFS {
+	return ttypes.PrivValidatorFS(filePath)
+}
+
+type dd ttypes.EvidenceList
 
 type ArticleContent struct {
 	ID        uint `gorm:"primary_key"`

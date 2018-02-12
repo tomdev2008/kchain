@@ -15,12 +15,8 @@ import (
 	"github.com/tendermint/tmlibs/log"
 
 	"kchain/types/code"
-	"kchain/types/transaction"
-)
-
-const (
-	ValidatorSetChangePrefix string = "val:"
-	AccountSetChangePrefix string = "act:"
+	"kchain/types/cnst"
+	ktx "kchain/types/tx"
 )
 
 //-----------------------------------------
@@ -36,7 +32,11 @@ type PersistentApplication struct {
 }
 
 func Run() *PersistentApplication {
-	return NewPersistentApplication("kchain", cfg().Config.DBDir(), logger())
+	return NewPersistentApplication(
+		"kchain",
+		cfg().Config.DBDir(),
+		cfg().GetLogWithKeyVals("module", "abci"),
+	)
 }
 
 func NewPersistentApplication(name, dbDir string, log1 log.Logger) *PersistentApplication {
@@ -71,20 +71,20 @@ func (app *PersistentApplication) SetOption(req types.RequestSetOption) types.Re
 
 // tx is either "val:pubkey/power" or "key=value" or just arbitrary bytes
 func (app *PersistentApplication) DeliverTx(txBytes []byte) types.ResponseDeliverTx {
-	tx := &transaction.Transaction{}
-	tx.FromBytes(txBytes)
+	tx1 := &Transaction{}
+	tx1.FromBytes(txBytes)
 
-	switch tx.Type {
-	case transaction.DbSet:
-		db, _ := tx.ToDb()
-		app.state.Set([]byte(db.Key), []byte(db.Value))
+	switch tx1.Type {
+	case cnst.DbSet:
+		tx1.CheckDb()
+		tx1.DbSave()
 
-	case transaction.AccountSet:
-		account, _ := tx.ToAccount()
-		app.state.Set([]byte(AccountSetChangePrefix + account.PubKey), []byte(strconv.Itoa(account.Power)))
+	case cnst.AccountSet:
+		account, _ := tx1.ToAccount()
+		app.state.Set([]byte(cnst.AccountPrefix + account.PubKey), []byte(strconv.Itoa(account.Power)))
 
-	case transaction.ValidatorSet:
-		val, _ := tx.ToValidator()
+	case cnst.ValidatorSet:
+		val, _ := tx1.ToValidator()
 		key := []byte(ValidatorSetChangePrefix + string(val.PubKey))
 
 		if val.Power == 0 {
@@ -121,16 +121,16 @@ func (app *PersistentApplication) DeliverTx(txBytes []byte) types.ResponseDelive
 }
 
 func (app *PersistentApplication) CheckTx(txBytes []byte) types.ResponseCheckTx {
-	tx := &transaction.Transaction{}
-	if err := tx.FromBytes(txBytes); err != nil {
+	tx1 := &Transaction{}
+	if err := tx1.FromBytes(txBytes); err != nil {
 		return types.ResponseDeliverTx{
 			Code:code.CodeTypeEncodingError.Code,
 			Log:err.Error(),
 		}
 	}
 
-	if strings.Compare(tx.Signature, "") != 0 {
-		if index, _ := app.state.Get([]byte(AccountSetChangePrefix + tx.SignPubKey)); index == 0 {
+	if strings.Compare(tx1.Signature, "") != 0 {
+		if index, _ := app.state.Get([]byte(AccountSetChangePrefix + tx1.SignPubKey)); index == 0 {
 			return types.ResponseDeliverTx{
 				Code:code.CodeTypeEncodingError.Code,
 				Log:"节点账户不存在",
@@ -138,39 +138,38 @@ func (app *PersistentApplication) CheckTx(txBytes []byte) types.ResponseCheckTx 
 		}
 	}
 
-	switch tx.Type {
-	case transaction.DbSet:
-
-		if _, err := tx.ToDb(); err != nil {
+	switch tx1.Type {
+	case cnst.DbSet:
+		if err := tx1.CheckDb(); err != nil {
 			return types.ResponseDeliverTx{
 				Code:code.CodeTypeEncodingError.Code,
 				Log:err.Error(),
 			}
 		}
-	case transaction.AccountSet:
-		if app.GenesisValidators[tx.SignPubKey] == 0 {
+	case cnst.AccountSet:
+		if app.GenesisValidators[tx1.SignPubKey] == 0 {
 			return types.ResponseDeliverTx{
 				Code:code.CodeTypeEncodingError.Code,
 				Log:"验证节点错误",
 			}
 		}
 
-		if _, err := tx.ToAccount(); err != nil {
+		if _, err := tx1.ToAccount(); err != nil {
 			return types.ResponseDeliverTx{
 				Code:code.CodeTypeEncodingError.Code,
 				Log:err.Error(),
 			}
 		}
 
-	case transaction.ValidatorSet:
-		if app.GenesisValidators[tx.SignPubKey] == 0 {
+	case cnst.ValidatorSet:
+		if app.GenesisValidators[tx1.SignPubKey] == 0 {
 			return types.ResponseDeliverTx{
 				Code:code.CodeTypeEncodingError.Code,
 				Log:"验证节点错误",
 			}
 		}
 
-		if _, err := tx.ToValidator(); err != nil {
+		if _, err := tx1.ToValidator(); err != nil {
 			return types.ResponseDeliverTx{
 				Code:code.CodeTypeEncodingError.Code,
 				Log:err.Error(),
@@ -204,18 +203,18 @@ func (app *PersistentApplication) Query(reqQuery types.RequestQuery) (resQuery t
 	)
 
 	switch path {
-	case transaction.DbGet:
+	case cnst.DbGet:
 
-		db := &transaction.Db{}
+		db := &ktx.Db{}
 		if err := json.Unmarshal(data, db); err != nil {
 			resQuery.Code = code.CodeTypeBadNonce.Code
 			resQuery.Log = err.Error()
 			return
 		}
-		logger.Error(db.Key, "search", "abci")
+		app.logger.Error(db.Key, "search", "abci")
 		index, value := app.state.Get([]byte(db.Key))
 
-		logger.Error(string(value), "search", "abci")
+		app.logger.Error(string(value), "search", "abci")
 
 		resQuery.Index = int64(index)
 		resQuery.Key = []byte(db.Key)

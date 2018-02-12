@@ -4,7 +4,7 @@ import (
 	"sync"
 )
 
-type Event struct {
+type event struct {
 	Desc    string
 	Name    string
 	Handler func([]byte)
@@ -12,23 +12,23 @@ type Event struct {
 
 var (
 	once sync.Once
-	instance map[string]*Event
+	instance map[string]*event
 )
 
 func Init() {
 	once.Do(func() {
-		instance = make(map[string]*Event)
+		instance = make(map[string]*event)
 		init_events()
 	})
 }
 
-func GetEvent(name string) *Event {
+func GetEvent(name string) *event {
 	return instance[name]
 }
 
 func e(name string, desc string, handler func([]byte)) {
 	logger.Info("register event", "event", name)
-	instance[name] = &Event{
+	instance[name] = &event{
 		Name:name,
 		Desc:desc,
 		Handler:handler,

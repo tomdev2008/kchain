@@ -18,6 +18,7 @@ func InitUrls(router *gin.Engine) {
 		service := router.Group("/service")
 		service.GET("/ping", func(c *gin.Context) {
 			c.String(http.StatusOK, "pong")
+
 			return
 		})
 	}

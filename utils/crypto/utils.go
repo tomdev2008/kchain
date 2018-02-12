@@ -24,8 +24,6 @@ func RandVals(cnt int) []*types.Validator {
 		res[i] = RandVal(i)
 	}
 
-	crypto.GenPrivKeyEd25519FromSecret()
-
 	pk := &crypto.PrivKeyEd25519{"sss"}
 	pk.AssertIsPrivKeyInner()
 

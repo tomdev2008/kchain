@@ -1,13 +1,13 @@
-package transaction
+package abci
 
 import (
-	"sort"
-
-	"golang.org/x/crypto/sha3"
+	"github.com/tendermint/iavl"
 	"github.com/mitchellh/mapstructure"
 	"strings"
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/pkg/errors"
+
+	ktx "kchain/types/tx"
 )
 
 /*
@@ -24,7 +24,11 @@ type Transaction struct {
 	SignPubKey string        `json:"signature,omitempty"`
 	Signature  string        `json:"signature,omitempty"`
 	Type       string        `json:"type,omitempty"`
-	Data       interface{}   `json:"data"`
+	Data       interface{}   `json:"data,omitempty"`
+	State      *iavl.VersionedTree
+	db         *ktx.Db
+	account    *ktx.Account
+	validator  *ktx.Validator
 }
 
 func (t *Transaction) FromBytes(bs []byte) error {
@@ -38,42 +42,61 @@ func (t *Transaction) ToBytes() ([]byte, error) {
 	return json.Marshal(t)
 }
 
-func (t *Transaction) ToDb() (*Db, error) {
-	db := &Db{}
-	if err := mapstructure.Decode(t.Data, db); err != nil {
-		return nil, err
+func (t *Transaction) DbDecode() error {
+	if err := mapstructure.Decode(t.Data, t.db); err != nil {
+		return err
 	}
+	return nil
+}
+
+func (t *Transaction) DbCheck() error {
 
 	if strings.Compare(t.Signature, "") != 0 {
 		pk := crypto.PubKeyEd25519{t.SignPubKey}
-		if !pk.VerifyBytes(db.ToSortString(), crypto.SignatureEd25519FromBytes(t.SignPubKey)) {
-			return nil, errors.New("验证签名失败")
+		if !pk.VerifyBytes(t.db.ToSortBytes(), crypto.SignatureEd25519FromBytes(t.SignPubKey)) {
+			return errors.New("验证签名失败")
 		}
 	}
 
-	return db, nil
+	return nil
 }
 
-func (t *Transaction) ToAccount() (*Account, error) {
-	account := &Account{}
-	if err := mapstructure.Decode(t.Data, account); err != nil {
-		return nil, err
+func (t *Transaction) DbSave() bool {
+	return t.State.Set(t.db.ToKv()...)
+}
+
+func (t *Transaction) DbGet() []byte {
+	return t.State.Get(t.db.Key())
+}
+
+func (t *Transaction) AccountDecode() error {
+	if err := mapstructure.Decode(t.Data, t.account); err != nil {
+		return err
 	}
+	return nil
+}
+
+func (t *Transaction) AccountCheck() error {
 
 	if strings.Compare(t.Signature, "") == 0 {
 		return nil, errors.New("验证签名为空")
 	}
 
 	pk := crypto.PubKeyEd25519{t.SignPubKey}
-	if !pk.VerifyBytes(account.ToSortString(), crypto.SignatureEd25519FromBytes(t.SignPubKey)) {
-		return nil, errors.New("验证签名失败")
+	if !pk.VerifyBytes(t.account.ToSortBytes(), crypto.SignatureEd25519FromBytes(t.SignPubKey)) {
+		return errors.New("验证签名失败")
 	}
 
-	return account, nil
+	return nil
 }
 
-func (t *Transaction) ToValidator() (*Validator, error) {
-	val := &Validator{}
+func (t *Transaction) AccountSave() bool {
+	return t.State.Set(t.account.ToSortBytes())
+
+}
+
+func (t *Transaction) ToValidator() (*ktx.Validator, error) {
+	val := &ktx.Validator{}
 	if err := mapstructure.Decode(t.Data, val); err != nil {
 		return nil, err
 	}
@@ -83,7 +106,7 @@ func (t *Transaction) ToValidator() (*Validator, error) {
 	}
 
 	pk := crypto.PubKeyEd25519{t.SignPubKey}
-	if !pk.VerifyBytes(val.ToSortString(), crypto.SignatureEd25519FromBytes(t.SignPubKey)) {
+	if !pk.VerifyBytes(val.ToSortBytes(), crypto.SignatureEd25519FromBytes(t.SignPubKey)) {
 		return nil, errors.New("验证签名失败")
 	}
 
@@ -130,22 +153,22 @@ func (t *Transaction) ToValidator() (*Validator, error) {
 //	return &Transaction{t, time.Now(), "", 0, data}
 //}
 
-func hashStringMap(m map[string]interface{}) []byte {
-	hash := sha3.New512()
-	encoder := json.NewEncoder(hash)
-	keys := make([]string, len(m))
-	i := 0
-	for id := range m {
-		keys[i] = id
-		i++
-	}
-	sort.Strings(keys)
-	for _, key := range keys {
-		encoder.Encode(key)
-		encoder.Encode(m[key])
-	}
-	return hash.Sum(nil)
-}
+//func hashStringMap(m map[string]interface{}) []byte {
+//	hash := sha3.New512()
+//	encoder := json.NewEncoder(hash)
+//	keys := make([]string, len(m))
+//	i := 0
+//	for id := range m {
+//		keys[i] = id
+//		i++
+//	}
+//	sort.Strings(keys)
+//	for _, key := range keys {
+//		encoder.Encode(key)
+//		encoder.Encode(m[key])
+//	}
+//	return hash.Sum(nil)
+//}
 
 type RequestQuery struct {
 	Data   []byte `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
