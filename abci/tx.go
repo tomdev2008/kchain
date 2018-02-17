@@ -1,35 +1,18 @@
 package abci
 
 import (
-	"github.com/tendermint/iavl"
-	"github.com/mitchellh/mapstructure"
 	"strings"
+
+	"github.com/mitchellh/mapstructure"
+
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/pkg/errors"
 
 	ktx "kchain/types/tx"
+	kts "kchain/types"
 )
 
-/*
-type Transaction struct {
-	Type      TransactionType  `json:"type"`
-	Timestamp string           `json:"timestamp"`
-	Signature string           `json:"signature"`
-	Nonce     uint32           `json:"nonce"`
-	Data      []byte           `json:"data"`
-}
- */
-
-
-type Transaction struct {
-	SignPubKey string        `json:"pubkey,omitempty"`
-	Signature  string        `json:"sign,omitempty"`
-	Data       interface{}   `json:"data,omitempty"`
-	State      *iavl.VersionedTree
-	db         *ktx.Db
-	account    *ktx.Account
-	validator  *ktx.Validator
-}
+type Transaction kts.Transaction
 
 func (t *Transaction) FromBytes(bs []byte) error {
 	if err := json.Unmarshal(bs, t); err != nil {

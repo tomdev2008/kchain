@@ -11,12 +11,12 @@ import (
 	"os"
 )
 
-func DbSet(k, v []byte) {
-	GetConfig()().store.Set(k, v)
+func DbSet(k, v string) {
+	GetConfig()().store.Set([]byte(k), []byte(v))
 }
 
-func DbGet(k []byte) []byte {
-	return GetConfig()().store.Get(k)
+func DbGet(k string) string {
+	return string(GetConfig()().store.Get([]byte(k)))
 }
 
 func GetLogWithKeyVals(keyvals ...interface{}) func() tlog.Logger {

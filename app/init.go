@@ -10,5 +10,5 @@ import (
 var (
 	json = jsoniter.ConfigCompatibleWithStandardLibrary
 	cfg = kcfg.GetConfig()
-	logger tlog.Logger = nil
+	logger tlog.Logger
 )
