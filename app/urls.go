@@ -13,21 +13,17 @@ func InitUrls(router *gin.Engine) {
 
 	//binding.Validator.RegisterValidation("bookabledate", validation.BookableDate)]
 
+	service := router.Group("/service")
+	service.GET("/ping", func(c *gin.Context) {
+		c.String(http.StatusOK, "pong")
 
-	{
-		service := router.Group("/service")
-		service.GET("/ping", func(c *gin.Context) {
-			c.String(http.StatusOK, "pong")
+		return
+	})
 
-			return
-		})
-	}
-
-	{
-		v1 := router.Group("/v1")
-		//v1.Use(AuthRequired())
-		v1.POST("/tx", _tx_handler)
-		v1.GET("/id/:id", _id_handler)
-	}
+	v1 := router.Group("/v1")
+	//v1.Use(AuthRequired())
+	v1.POST("/tx", _tx_handler)
+	v1.GET("/tx", _tx_handler)
+	v1.GET("/id/:id", _id_handler)
 
 }

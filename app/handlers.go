@@ -5,12 +5,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"kchain/types"
-	cnst "kchain/types/cnst"
+	kcfg "kchain/types/cfg"
 )
 
 func _tx_handler(c *gin.Context) {
-	t := &types.Tx{}
+	t := &Tx{}
 	if err := c.ShouldBindJSON(t); err != nil {
 		logger.Error(err.Error())
 		c.JSON(http.StatusOK, gin.H{
@@ -20,20 +19,15 @@ func _tx_handler(c *gin.Context) {
 		return
 	}
 
-	switch t.Event {
-	case cnst.DbSet:
 
-
-	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code": "ok",
-		"data":store().Get(t.ID),
+		"data":kcfg.DbGet([]byte(t.ID)),
 	})
 }
 
 func _id_handler(c *gin.Context) {
-	store := store_client.GetStoreClient()
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusOK, gin.H{
@@ -45,6 +39,6 @@ func _id_handler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"code": "ok",
-		"data":store().Get(id),
+		"data":kcfg.DbGet([]byte(id)),
 	})
 }

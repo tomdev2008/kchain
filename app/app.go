@@ -2,11 +2,12 @@ package app
 
 import (
 	"github.com/gin-gonic/gin"
+	kcfg "kchain/types/cfg"
 )
 
 func Run() {
 
-	logger = cfg().GetLogWithKeyVals("module", "app")
+	logger = kcfg.GetLogWithKeyVals("module", "app")
 
 	app := gin.Default()
 

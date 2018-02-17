@@ -11,48 +11,48 @@ import (
 	"os"
 )
 
-func (ss *services) DbSet(k, v []byte) {
-	ss.store.Set(k, v)
+func DbSet(k, v []byte) {
+	GetConfig()().store.Set(k, v)
 }
 
-func (ss *services) DbGet(k []byte) []byte {
-	return ss.store.Get(k)
+func DbGet(k []byte) []byte {
+	return GetConfig()().store.Get(k)
 }
 
-func (ss *services) GetLogWithKeyVals(keyvals ...interface{}) func() tlog.Logger {
-	return ss.log.With(keyvals...)
+func GetLogWithKeyVals(keyvals ...interface{}) func() tlog.Logger {
+	return GetConfig()().log.With(keyvals...)
 }
 
-func (ss *services) GetPrivKey() crypto.PrivKey {
-	return ss.pk.PrivKey
+func GetPrivKey() crypto.PrivKey {
+	return GetConfig()().pk.PrivKey
 }
 
-func (ss *services) GetPubKey() crypto.PubKey {
-	return ss.pk.GetPubKey()
+func GetPubKey() crypto.PubKey {
+	return GetConfig()().pk.GetPubKey()
 }
 
-func (ss *services) GetAddress() []byte {
-	return ss.pk.GetAddress().Bytes()
+func GetAddress() []byte {
+	return GetConfig()().pk.GetAddress().Bytes()
 }
 
-func (ss *services) Sign(msg []byte) ([]byte, error) {
-	if _sign, err := ss.pk.Sign(msg); err != nil {
+func Sign(msg []byte) ([]byte, error) {
+	if _sign, err := GetConfig()().pk.Sign(msg); err != nil {
 		return nil, err
 	} else {
 		return _sign.Bytes(), nil
 	}
 }
 
-func (ss *services) Verify(msg, sign []byte) ([]byte, error) {
+func Verify(msg, sign []byte) ([]byte, error) {
 	if _sign, err := crypto.SignatureFromBytes(sign); err != nil {
 		return nil, err
 	} else {
-		return ss.pk.PubKey.VerifyBytes(msg, _sign), nil
+		return GetConfig()().pk.PubKey.VerifyBytes(msg, _sign), nil
 	}
 }
 
-func (ss *services) GetAbciClient() (*c.HTTP) {
-	return ss.client
+func Abci() *c.HTTP {
+	return GetConfig()().client
 }
 
 func initServices() *services {

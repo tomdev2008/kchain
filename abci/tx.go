@@ -20,10 +20,10 @@ type Transaction struct {
 }
  */
 
+
 type Transaction struct {
-	SignPubKey string        `json:"signature,omitempty"`
-	Signature  string        `json:"signature,omitempty"`
-	Type       string        `json:"type,omitempty"`
+	SignPubKey string        `json:"pubkey,omitempty"`
+	Signature  string        `json:"sign,omitempty"`
 	Data       interface{}   `json:"data,omitempty"`
 	State      *iavl.VersionedTree
 	db         *ktx.Db
@@ -49,6 +49,13 @@ func (t *Transaction) DbDecode() error {
 	return nil
 }
 
+func (t *Transaction) ValidatorDecode() error {
+	if err := mapstructure.Decode(t.Data, t.db); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (t *Transaction) DbCheck() error {
 
 	if strings.Compare(t.Signature, "") != 0 {
@@ -65,7 +72,7 @@ func (t *Transaction) DbSave() bool {
 	return t.State.Set(t.db.ToKv()...)
 }
 
-func (t *Transaction) DbGet() []byte {
+func (t *Transaction) DbGet() (int, []byte) {
 	return t.State.Get(t.db.Key())
 }
 
@@ -91,8 +98,11 @@ func (t *Transaction) AccountCheck() error {
 }
 
 func (t *Transaction) AccountSave() bool {
-	return t.State.Set(t.account.ToSortBytes())
+	return t.State.Set(t.account.ToKv()...)
+}
 
+func (t *Transaction) AccountGet() bool {
+	return t.State.Set(t.account.ToKv()...)
 }
 
 func (t *Transaction) ToValidator() (*ktx.Validator, error) {

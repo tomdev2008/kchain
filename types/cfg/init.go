@@ -27,5 +27,6 @@ type services struct {
 	store  *dbm.GoLevelDB
 	log    tlog.Logger
 	pk     *ttypes.PrivValidatorFS
-	client     *c.HTTP
+	client *c.HTTP
 }
+

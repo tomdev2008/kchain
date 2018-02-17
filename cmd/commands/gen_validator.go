@@ -23,6 +23,5 @@ func genValidator(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf(`%v
-`, string(privValidatorJSONBytes))
+	fmt.Printf(`%v`, string(privValidatorJSONBytes))
 }
